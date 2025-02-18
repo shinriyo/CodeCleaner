@@ -18,15 +18,13 @@ class ApplyAllInspectionsAction : AnAction("Apply All Inspections Fixes") {
         WriteCommandAction.runWriteCommandAction(project) {
             val inspectionManager = InspectionManagerEx.getInstance(project)
             val profile = InspectionProjectProfileManager.getInstance(project).currentProfile
-            val inspectionTools = profile.getAllEnabledInspectionTools(project)
+            val inspectionTools = profile.getAllTools().filter { it.tool is LocalInspectionTool }
             
             val problems: List<ProblemDescriptor> = inspectionTools.flatMap { tool ->
-                if (tool.tool is LocalInspectionTool) {
-                    val holder = ProblemsHolder(inspectionManager, file, false)
-                    val visitor = (tool.tool as LocalInspectionTool).buildVisitor(holder, false)
-                    file.accept(visitor)
-                    holder.results
-                } else emptyList()
+                val holder = ProblemsHolder(inspectionManager, file, false)
+                val visitor = (tool.tool as LocalInspectionTool).buildVisitor(holder, false)
+                file.accept(visitor)
+                holder.results
             }
 
             problems.forEach { problem: ProblemDescriptor ->

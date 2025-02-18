@@ -6,30 +6,30 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
 import com.intellij.codeInsight.intention.IntentionManager
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.actionSystem.AnAction
 
-class ApplyAllQuickFixesAction : IntentionAction {
-    override fun getText() = "Apply All Quick Fixes & Reformat"
-    override fun getFamilyName() = "CustomFixes"
-    override fun isAvailable(project: Project, editor: Editor?, file: PsiFile?) = true
+class ApplyAllQuickFixesAction : AnAction("Apply All Quick Fixes & Reformat") {
+    override fun actionPerformed(e: AnActionEvent) {
+        val project = e.project ?: return
+        val editor = e.getRequiredData(CommonDataKeys.EDITOR)
+        val file = e.getRequiredData(CommonDataKeys.PSI_FILE)
 
-    override fun invoke(project: Project, editor: Editor?, file: PsiFile?) {
         WriteCommandAction.runWriteCommandAction(project) {
-            val intentions = file?.let { f ->
-                IntentionManager.getInstance().getAvailableIntentions()
-            } ?: return@runWriteCommandAction
-
+            val intentions = IntentionManager.getInstance().availableIntentions
+            
             intentions.forEach { intention: IntentionAction ->
-                intention.isAvailable(project, editor, file)
-                intention.invoke(project, editor, file)
+                if (intention.isAvailable(project, editor, file)) {
+                    intention.invoke(project, editor, file)
+                }
             }
 
-            // コードフォーマット適用
-            editor?.document?.let { doc ->
+            // Apply code formatting
+            editor.document.let { doc ->
                 com.intellij.psi.codeStyle.CodeStyleManager.getInstance(project)
                     .reformatText(file, 0, doc.textLength)
             }
         }
     }
-
-    override fun startInWriteAction() = true
 }
